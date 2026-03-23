@@ -1,0 +1,13 @@
+# Simple Grid Install
+Grids/
+Grids/SimpleGrid/
+
+# Build output folders
+map/
+obj/
+
+# Binary and library files
+*.dll
+*.exp
+*.lib
+*.cache

@@ -1,0 +1,18 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+# Clarion 2.1.0.2447
+Project("{12B76EC0-1D7B-4FA7-A7D0-C524288B48A1}") = "ExampleSimpleGrid", "ExampleSimpleGrid.cwproj", "{9BA52F63-FFBF-483B-B208-9022A4507589}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9BA52F63-FFBF-483B-B208-9022A4507589}.Debug|Win32.Build.0 = Debug|Win32
+		{9BA52F63-FFBF-483B-B208-9022A4507589}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9BA52F63-FFBF-483B-B208-9022A4507589}.Release|Win32.Build.0 = Release|Win32
+		{9BA52F63-FFBF-483B-B208-9022A4507589}.Release|Win32.ActiveCfg = Release|Win32
+	EndGlobalSection
+EndGlobal
