@@ -1,6 +1,7 @@
 # Simple Grid Install
 Grids/
 Grids/SimpleGrid/
+.gitignore
 
 # Build output folders
 map/
