@@ -272,6 +272,16 @@ typedef struct tagNMSGFOCUS {
 /// @returns No return value. 
 #define SGN_ITEMCLICK   0x0015
 
+/// @brief Sent when the user clicks a column header.
+///
+/// @details Sent via WM_NOTIFY. lParam points to an NMGRID struct where:
+///   - col  = 0-based index of the clicked column
+///   - row  = -1 (header row indicator)
+///   - dwType = column type
+///
+/// @returns No return value.
+#define SGN_HEADERCLICK 0x0016
+
 /// @}
 
 /****************************************************************************/
@@ -330,6 +340,7 @@ typedef struct tagNMSGFOCUS {
 #define SG_RIGHTJUSTIFYNUMERICS  WM_USER + 0x32 ///<Unused
 #define SG_INSERTROW WM_USER + 0x33             ///<SimpleGrid_InsertRow()
 #define SG_DELETEROW WM_USER + 0x34             ///<SimpleGrid_DeleteRow()
+#define SG_SETSORTCOLUMN WM_USER + 0x35         ///<SimpleGrid_SetSortColumn()
 
 /// @}
 
@@ -608,7 +619,7 @@ typedef struct tagNMSGFOCUS {
 
 /// @def SimpleGrid_GetTitleLength(hGrid)
 ///
-/// @brief Get the length, in characters, of the grid’s title bar text.
+/// @brief Get the length, in characters, of the gridï¿½s title bar text.
 ///
 /// @param hGrid The handle of the grid.
 ///

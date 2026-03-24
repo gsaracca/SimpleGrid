@@ -294,4 +294,93 @@ SimpleGrid_DeleteRow PROCEDURE(SGHANDLE hGrid, LONG position)!,LONG
 SimpleGrid_Enable PROCEDURE(SGHANDLE hGrid, LONG fEnable)!,LONG
   CODE
   RETURN EnableWindow(hGrid, fEnable)
-  
+
+! -------------------------------------------------------
+! SimpleGrid_BeginLoad
+!
+! Congela el repintado del grid antes de cargar datos.
+! Llamar antes de ResetContent + bucle de AddRow/SetItemText.
+! Evita el parpadeo y acelera la carga significativamente.
+! -------------------------------------------------------
+SimpleGrid_BeginLoad PROCEDURE(SGHANDLE hGrid)!,LONG
+  CODE
+  RETURN SimpleGrid_SendMessage(hGrid, WM_SETREDRAW, 0, 0)
+
+! -------------------------------------------------------
+! SimpleGrid_EndLoad
+!
+! Re-habilita el repintado y fuerza un repintado inmediato.
+! Llamar después de que termine el bucle de carga.
+! -------------------------------------------------------
+SimpleGrid_EndLoad PROCEDURE(SGHANDLE hGrid)!,LONG
+  CODE
+  SimpleGrid_SendMessage(hGrid, WM_SETREDRAW, 1, 0)
+  InvalidateRect(hGrid, 0, 1)
+  UpdateWindow(hGrid)
+  RETURN 1
+
+! -------------------------------------------------------
+! SimpleGrid_GetQueueRow
+!
+! Devuelve el número de fila del Queue Clarion que corresponde
+! a la fila actualmente seleccionada en el grid.
+!
+! REQUIERE que al hacer AddRow se haya guardado el índice
+! del queue en el row header:
+!   rowIdx = FORMAT(qRow, @N10)
+!   SimpleGrid_AddRow(hGrid, rowIdx)
+!
+! Retorna: número de fila del Queue (1-based), o 0 si error.
+! -------------------------------------------------------
+SimpleGrid_GetQueueRow PROCEDURE(SGHANDLE hGrid)!,LONG
+buf   STRING(20)
+  CODE
+  SimpleGrid_GetRowHeaderText(hGrid, SimpleGrid_GetCursorRow(hGrid), buf)
+  RETURN VAL(CLIP(buf))
+
+! -------------------------------------------------------
+! SimpleGrid_SetColumnSortMark
+!
+! Actualiza el texto del encabezado de una columna para
+! mostrar visualmente la dirección de ordenamiento.
+!
+! direction: SGS_NONE  → 'Nombre'
+!            SGS_ASC   → 'Nombre ^'
+!            SGS_DESC  → 'Nombre v'
+!
+! Parámetros:
+!   hGrid    - handle del grid
+!   iCol     - columna a marcar (0-based)
+!   direction- SGS_NONE, SGS_ASC o SGS_DESC
+!   baseText - texto base del encabezado (sin marca previa)
+! -------------------------------------------------------
+! -------------------------------------------------------
+! SimpleGrid_SetSortColumn
+!
+! Dibuja un triángulo nativo (▲/▼) en el encabezado de la
+! columna indicada. El triángulo es renderizado por el DLL.
+! Llama a SG_RESETCONTENT o a esta función con direction=0
+! para limpiar todas las flechas.
+!
+! Parámetros:
+!   hGrid    - handle del grid
+!   iCol     - columna a marcar (0-based); -1 = limpiar todas
+!   direction- SGS_NONE (0), SGS_ASC (1) o SGS_DESC (2)
+! -------------------------------------------------------
+SimpleGrid_SetSortColumn PROCEDURE(SGHANDLE hGrid, LONG iCol, LONG direction)!,LONG
+  CODE
+  RETURN SimpleGrid_SendMessage(hGrid, SG_SETSORTCOLUMN, iCol, direction)
+
+SimpleGrid_SetColumnSortMark PROCEDURE(SGHANDLE hGrid, LONG iCol, LONG direction, SGSTR baseText)!,LONG
+newText   STRING(256)
+  CODE
+  CASE direction
+  OF SGS_ASC
+    newText = CLIP(baseText) & ' ^'
+  OF SGS_DESC
+    newText = CLIP(baseText) & ' v'
+  ELSE
+    newText = CLIP(baseText)
+  END
+  RETURN SimpleGrid_SetColumnHeaderText(hGrid, iCol, newText)
+

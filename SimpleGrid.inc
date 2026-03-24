@@ -75,6 +75,7 @@ SGN_KEYDOWN                 EQUATE(0006h)
 SGN_GOTFOCUS                EQUATE(0012h)
 SGN_LOSTFOCUS               EQUATE(0013h)
 SGN_ITEMCLICK               EQUATE(0015h)
+SGN_HEADERCLICK             EQUATE(0016h)  ! Click en encabezado de columna (col=0-based, row=-1)
 
 SG_ADDCOLUMN                EQUATE(WM_USER + 001h)
 SG_ADDROW                   EQUATE(WM_USER + 002h)
@@ -128,6 +129,19 @@ SG_SHOWINTEGRALROWS         EQUATE(WM_USER + 031h)
 SG_RIGHTJUSTIFYNUMERICS     EQUATE(WM_USER + 032h)
 SG_INSERTROW                EQUATE(WM_USER + 033h)
 SG_DELETEROW                EQUATE(WM_USER + 034h)
+SG_SETSORTCOLUMN            EQUATE(WM_USER + 035h)  ! Marcar columna con flecha de sort nativa
+
+! -------------------------------------------------------
+! Constantes para carga rápida (BeginLoad / EndLoad)
+! -------------------------------------------------------
+WM_SETREDRAW                EQUATE(00Bh)
+
+! -------------------------------------------------------
+! Constantes de dirección de ordenamiento (SetColumnSortMark)
+! -------------------------------------------------------
+SGS_NONE                    EQUATE(0)   ! Sin marca de sort
+SGS_ASC                     EQUATE(1)   ! Orden ascendente  ( ^)
+SGS_DESC                    EQUATE(2)   ! Orden descendente ( v)
 
     map
         module('USER32.DLL')
@@ -140,6 +154,8 @@ SG_DELETEROW                EQUATE(WM_USER + 034h)
             SetWindowTextA(SGHANDLE hWnd, *SGSTR lpString),LONG,RAW,NAME('SetWindowTextA')
             SetWindowTextW(SGHANDLE hWnd, *SGSTR lpString),LONG,RAW,NAME('SetWindowTextW')
             EnableWindow(SGHANDLE hWnd, LONG fEnable),LONG,RAW,NAME('EnableWindow')
+            InvalidateRect(SGHANDLE hWnd, LONG lpRect, LONG bErase),LONG,RAW,NAME('InvalidateRect')
+            UpdateWindow(SGHANDLE hWnd),LONG,RAW,NAME('UpdateWindow')
         end
         module( 'SimpleGrid.clw' )
             SimpleGrid_SendMessage(SGHANDLE hWnd, UNSIGNED Msg, SGWPARAM wParam, SGLPARAM lParam),SGLPARAM
@@ -203,7 +219,13 @@ SG_DELETEROW                EQUATE(WM_USER + 034h)
             SimpleGrid_InsertRow(SGHANDLE hGrid, LONG position, *SGSTR header),LONG
             SimpleGrid_DeleteRow(SGHANDLE hGrid, LONG position),LONG
             SimpleGrid_Enable(SGHANDLE hGrid, LONG fEnable),LONG
-        end 
+            ! --- Helpers para flujo Queue → Grid ---
+            SimpleGrid_BeginLoad(SGHANDLE hGrid),LONG
+            SimpleGrid_EndLoad(SGHANDLE hGrid),LONG
+            SimpleGrid_GetQueueRow(SGHANDLE hGrid),LONG
+            SimpleGrid_SetColumnSortMark(SGHANDLE hGrid, LONG iCol, LONG direction, SGSTR baseText),LONG
+            SimpleGrid_SetSortColumn(SGHANDLE hGrid, LONG iCol, LONG direction),LONG
+        end
     end
 
 _endOfInclude_

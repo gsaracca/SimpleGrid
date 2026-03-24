@@ -605,8 +605,10 @@ typedef struct tagINSTANCEDATA {
     BOOL LAUNCLINK;                 ///< Link launch flag
     INT columntoresize;             ///< Field to hold the index of the column to resize
     INT columntoresizeinitsize;     ///< Field to hold the initial size of a column to resize
-    INT columntoresizeinitx;        ///< Field to hold the x coord of the mouse button during resize 
+    INT columntoresizeinitx;        ///< Field to hold the x coord of the mouse button during resize
     INT cursortype;                 ///< Text, pointer, or column resize cursor
+    INT sortcol;                    ///< Sorted column (1-based internal index, -1 = none)
+    INT sortdir;                    ///< Sort direction: 0 = none, 1 = ASC, 2 = DESC
 } INSTANCEDATA , *LPINSTANCEDATA;
 
 static LPINSTANCEDATA g_lpInst;     ///< instance data (this) pointer
@@ -1377,7 +1379,36 @@ static VOID DisplayColumn(HWND hwnd, int col, int offset, HFONT hfont, HFONT hco
 
     holdfont = (HFONT)SelectObject(hdc, hcolumnheadingfont);
     DrawTextEx(hdc, buffer, -1, &rect, DT_END_ELLIPSIS | DT_CENTER | DT_WORDBREAK | DT_NOPREFIX, NULL);
-    SelectObject(hdc, holdfont);//Don't delete 
+    SelectObject(hdc, holdfont); //Don't delete
+
+    // Draw sort direction triangle for the active sort column
+    if (col > 0 && col == g_lpInst->sortcol && g_lpInst->sortdir != 0)
+    {
+        const int AS = 4;   // Arrow half-size in pixels
+        int ax = rect.right - (AS * 2) - 3;           // Right-aligned with margin
+        int ay = (rect.top + rect.bottom) / 2;        // Vertically centered
+        POINT pts[3];
+        HBRUSH hbr    = CreateSolidBrush(GetSysColor(COLOR_WINDOWTEXT));
+        HBRUSH hbrOld = (HBRUSH)SelectObject(hdc, hbr);
+        HPEN   hpnOld = (HPEN)SelectObject(hdc, GetStockObject(NULL_PEN));
+
+        if (g_lpInst->sortdir == 1)  // ASC: triangle pointing up (▲)
+        {
+            pts[0].x = ax;           pts[0].y = ay + AS;
+            pts[1].x = ax + AS * 2;  pts[1].y = ay + AS;
+            pts[2].x = ax + AS;      pts[2].y = ay - AS;
+        }
+        else                         // DESC: triangle pointing down (▼)
+        {
+            pts[0].x = ax;           pts[0].y = ay - AS;
+            pts[1].x = ax + AS * 2;  pts[1].y = ay - AS;
+            pts[2].x = ax + AS;      pts[2].y = ay + AS;
+        }
+        Polygon(hdc, pts, 3);
+        SelectObject(hdc, hbrOld);
+        SelectObject(hdc, hpnOld);
+        DeleteObject(hbr);
+    }
 
     rect = rectsave;
 
@@ -1954,6 +1985,24 @@ static void NotifyCellClick(HWND hwnd)
     FORWARD_WM_NOTIFY(g_lpInst->hwndParent, g_nmGrid.hdr.idFrom, &g_nmGrid, SNDMSG);
 }
 
+/// @brief Notify parent that a column header was clicked.
+///
+/// @param hwnd  Handle of the grid
+/// @param col   Internal (1-based) column index that was clicked
+///
+/// @returns VOID
+static void NotifyHeaderClick(HWND hwnd, int col)
+{
+    memset(&g_nmGrid, 0, sizeof(g_nmGrid));
+    g_nmGrid.col    = col - 1;          // Convert to 0-based for the caller
+    g_nmGrid.row    = -1;               // -1 signals "header row"
+    g_nmGrid.dwType = GetColType(col);
+    g_nmGrid.hdr.hwndFrom = hwnd;
+    g_nmGrid.hdr.idFrom   = GetDlgCtrlID(g_nmGrid.hdr.hwndFrom);
+    g_nmGrid.hdr.code     = SGN_HEADERCLICK;
+    FORWARD_WM_NOTIFY(g_lpInst->hwndParent, g_nmGrid.hdr.idFrom, &g_nmGrid, SNDMSG);
+}
+
 /// @brief Notify Parent that a key was pressed.
 ///
 /// @param hwnd Handle of the grid
@@ -2480,6 +2529,8 @@ static BOOL Grid_OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
         inst.ALLOWCOLUMNRESIZING = FALSE;
         inst.FORCELEFTJUSTIFY = FALSE;
         inst.cursortype = 0;
+        inst.sortcol = -1;
+        inst.sortdir = 0;
         inst.hcolumnheadingfont = NULL;
         inst.htitlefont = NULL;
 
@@ -3064,6 +3115,14 @@ static VOID Grid_OnLButtonDown(HWND hwnd, BOOL fDoubleClick, int x, int y, UINT 
             g_lpInst->HIGHLIGHTFULLROW = TRUE;
             g_lpInst->cursorrow = r;
             RefreshGrid(hwnd);
+            return;
+        }
+
+        // Header row click on a data column: fire SGN_HEADERCLICK and return.
+        // Do not move the cursor — header clicks are for sort, not selection.
+        if (r == 0 && c > 0)
+        {
+            NotifyHeaderClick(hwnd, c);
             return;
         }
 
@@ -3861,6 +3920,24 @@ static LRESULT Grid_OnDeleteRow(HWND hwnd, WPARAM wParam)//DWM 2.1: Added
     }
 }
 
+/// @brief Handles SG_SETSORTCOLUMN message.
+///
+/// @details Sets the column that shows a sort direction arrow in its header.
+///          Triggers a grid repaint so the arrow appears immediately.
+///
+/// @param hwnd  Handle of the grid
+/// @param col   0-based data column index to mark (-1 to clear all arrows)
+/// @param dir   Sort direction: 0 = none, 1 = ASC (▲), 2 = DESC (▼)
+///
+/// @returns 1 on success
+static LRESULT Grid_OnSetSortColumn(HWND hwnd, int col, int dir)
+{
+    g_lpInst->sortcol = (col >= 0) ? col + 1 : -1;  // Store as 1-based internal index
+    g_lpInst->sortdir = dir;
+    RefreshGrid(hwnd);
+    return 1;
+}
+
 /// @brief Handles SG_RESETCONTENT message.
 ///
 /// @param hwnd The handle of the grid
@@ -4420,6 +4497,8 @@ static LRESULT CALLBACK Grid_Proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
             return Grid_OnInsertRow(hwnd, wParam, lParam);
         case SG_DELETEROW: //DWM 2.1: Added
             return Grid_OnDeleteRow(hwnd, wParam) - 1; //don't include the column header row
+        case SG_SETSORTCOLUMN:
+            return Grid_OnSetSortColumn(hwnd, (int)wParam, (int)lParam);
         case SG_ENABLEEDIT:
             g_lpInst->EDITABLE = (BOOL)wParam;
             break;
