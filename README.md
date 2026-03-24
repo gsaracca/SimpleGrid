@@ -76,6 +76,7 @@ SimpleGrid/
 ### Requirements
 
 - **Visual Studio 2012** or later (Win32 C compiler)
+- **Pelles C 13.x** or later (Win32 C compiler)
 - **Clarion** (optional, for Clarion bindings and example)
 
 ### Visual Studio
